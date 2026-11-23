@@ -3,6 +3,13 @@
 Semantic versioning; the version lives in `kg_extract/__init__.py` and is written
 into every output record, run file, `stats.json` and evaluation report.
 
+## 0.3.2 (2026-11-23)
+- setup.sh: a gated/unavailable extractor model no longer aborts setup (RAG-WM's Qwen is
+  downloaded first); re-run setup once access is granted.
+
+## 0.3.1 (2026-11-23)
+- setup.sh: timestamps per stage and visible pip progress (no more silent `-q`).
+
 ## 0.3.0 (2026-11-23)
 - Generate the watermarked KB on OzSTAR: `slurm/submit.sh ragwm` runs the unmodified
   RAG-WM pipeline (vectorstore -> entity -> tuples + watermark texts -> inject -> verify)

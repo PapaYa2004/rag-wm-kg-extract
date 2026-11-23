@@ -19,48 +19,53 @@ module load "${PY_MODULE}"
 python3 -c 'import sys; assert sys.version_info >= (3, 10), sys.version' \
   || { echo "PY_MODULE must provide Python >= 3.10" >&2; exit 2; }
 
-echo "== 1/5 export venv (chromadb==0.5.20) =="
+echo "== $(date +%H:%M:%S) 1/5 export venv (chromadb==0.5.20) =="
 if [[ ! -x "${VENV_EXPORT}/bin/python" ]]; then
   python3 -m venv "${VENV_EXPORT}"
 fi
-"${VENV_EXPORT}/bin/pip" install -q --upgrade pip
-"${VENV_EXPORT}/bin/pip" install -q -r requirements-export.txt
+"${VENV_EXPORT}/bin/pip" install --progress-bar off --upgrade pip
+"${VENV_EXPORT}/bin/pip" install --progress-bar off -r requirements-export.txt
 
-echo "== 2/5 client venv (kg-gen deps, dspy, sentence-transformers) =="
+echo "== $(date +%H:%M:%S) 2/5 client venv (kg-gen deps, dspy, sentence-transformers) =="
 if [[ ! -x "${VENV_CLIENT}/bin/python" ]]; then
   python3 -m venv "${VENV_CLIENT}"
 fi
-"${VENV_CLIENT}/bin/pip" install -q --upgrade pip
-"${VENV_CLIENT}/bin/pip" install -q -r requirements-client.txt
+"${VENV_CLIENT}/bin/pip" install --progress-bar off --upgrade pip
+"${VENV_CLIENT}/bin/pip" install --progress-bar off -r requirements-client.txt
 "${VENV_CLIENT}/bin/pip" freeze > "${OUT_ROOT}/requirements-client.lock.txt"
 
-echo "== 2b/5 RAG-WM venv (to generate the watermarked KB with a local LLM) =="
+echo "== $(date +%H:%M:%S) 2b/5 RAG-WM venv (to generate the watermarked KB with a local LLM) =="
 if [[ ! -x "${VENV_RAGWM}/bin/python" ]]; then
   python3 -m venv "${VENV_RAGWM}"
 fi
-"${VENV_RAGWM}/bin/pip" install -q --upgrade pip
-"${VENV_RAGWM}/bin/pip" install -q -r requirements-ragwm.txt
+"${VENV_RAGWM}/bin/pip" install --progress-bar off --upgrade pip
+"${VENV_RAGWM}/bin/pip" install --progress-bar off -r requirements-ragwm.txt
 "${VENV_RAGWM}/bin/pip" freeze > "${OUT_ROOT}/requirements-ragwm.lock.txt"
 mkdir -p "${TIKTOKEN_CACHE_DIR}"
 TIKTOKEN_CACHE_DIR="${TIKTOKEN_CACHE_DIR}" "${VENV_RAGWM}/bin/python" -c \
   "import tiktoken; [tiktoken.get_encoding(e) for e in ('cl100k_base', 'o200k_base')]; print('tiktoken OK')"
 
-echo "== 3/5 vLLM container =="
+echo "== $(date +%H:%M:%S) 3/5 vLLM container =="
 module load apptainer
 if [[ ! -s "${VLLM_SIF}" ]]; then
   apptainer pull "${VLLM_SIF}" "${VLLM_IMAGE}"
 fi
 ls -lh "${VLLM_SIF}"
 
-echo "== 4/5 model weights + NLTK data into ${HF_HOME} =="
+echo "== $(date +%H:%M:%S) 4/5 model weights + NLTK data into ${HF_HOME} =="
 "${VENV_CLIENT}/bin/python" - <<PY
 import os
 from huggingface_hub import snapshot_download
-tok = os.environ.get("HF_TOKEN")
-snapshot_download("${HF_MODEL}", token=tok,
-                  allow_patterns=["*.json", "*.safetensors", "tokenizer*", "*.model", "*.txt"])
-snapshot_download("${RAGWM_HF_MODEL}",
-                  allow_patterns=["*.json", "*.safetensors", "tokenizer*", "*.model", "*.txt"])
+tok = os.environ.get("HF_TOKEN") or None
+pat = ["*.json", "*.safetensors", "tokenizer*", "*.model", "*.txt"]
+snapshot_download("${RAGWM_HF_MODEL}", allow_patterns=pat)          # RAG-WM's LLM (not gated)
+try:                                                                 # extractor LLM (gated)
+    snapshot_download("${HF_MODEL}", token=tok, allow_patterns=pat)
+    print("extractor model ${HF_MODEL}: OK")
+except Exception as e:  # GatedRepoError / 401 / 403 while access is pending, or no token
+    print(f"WARNING: could not download extractor model ${HF_MODEL} ({type(e).__name__}).")
+    print("  RAG-WM (submit.sh ragwm) does not need it. Once your access is ACCEPTED on")
+    print("  huggingface.co/settings/gated-repos, export HF_TOKEN and re-run: bash slurm/setup.sh")
 for m in {"${KG_RETRIEVAL_MODEL}", "${KG_EVAL_EMBED_MODEL}", "${SEMHASH_MODEL}", "facebook/contriever"}:
     snapshot_download(m)
 import nltk
@@ -69,7 +74,7 @@ for r in ("punkt", "punkt_tab"):
 print("downloads OK")
 PY
 
-echo "== 5/5 kg-gen API check (vendored source at ${KGGEN_SRC}) =="
+echo "== $(date +%H:%M:%S) 5/5 kg-gen API check (vendored source at ${KGGEN_SRC}) =="
 PYTHONPATH="${KE_DIR}:${KGGEN_SRC}" HF_HUB_OFFLINE=1 "${VENV_CLIENT}/bin/python" -m kg_extract.check_kggen \
   | tee "${OUT_ROOT}/kggen_check.txt"
 echo "setup done"

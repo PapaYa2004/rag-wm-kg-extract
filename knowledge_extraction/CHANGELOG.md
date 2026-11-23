@@ -3,6 +3,17 @@
 Semantic versioning; the version lives in `kg_extract/__init__.py` and is written
 into every output record, run file, `stats.json` and evaluation report.
 
+## 0.3.0 (2026-11-23)
+- Generate the watermarked KB on OzSTAR: `slurm/submit.sh ragwm` runs the unmodified
+  RAG-WM pipeline (vectorstore -> entity -> tuples + watermark texts -> inject -> verify)
+  as a resumable Slurm chain, then builds `datasets/<ds>/<ds>_watermarked.jsonl`.
+- LLM for RAG-WM: local Qwen2.5-7B-Instruct on vLLM, served as `gpt-3.5-turbo` (the name
+  RAG-WM requests); config written per job to the git-ignored `rag-wm/model_configs/`.
+- `ragwm_run/launch.py`: redirects RAG-WM's hard-coded Chroma path in memory and stubs
+  unused providers (fastchat, google.generativeai); RAG-WM files are not modified.
+- `kgx_start_vllm` accepts VLLM_MODEL / VLLM_SERVED / VLLM_EXTRA.
+- CHROMA_DIR / RAGWM_OUTPUT now default to `$WORK/ragwm/...` (no manual edit).
+
 ## 0.2.0 (2026-11-23)
 - Dataset layout: `datasets/<ds>/<ds>_original.jsonl` + `<ds>_watermarked.jsonl`
   (built by `kg_eval.build_corpus_variants`, optionally verified against the Chroma

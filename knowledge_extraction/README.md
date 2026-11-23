@@ -50,25 +50,41 @@ knowledge_extraction/
 
 All heavy work runs as Slurm jobs on NT A100 nodes (`--gres=gpu:1`, no `--partition`, per the OzSTAR docs).
 
-**1. One-time setup (login node `tooarrana1`/`tooarrana2`)**
+**1. One-time setup (NT login node)**
+
+Connect with `ssh <user>@nt.swin.edu.au`, which lands on `tooarrana1`/`tooarrana2`. Don't use `ozstar.swin.edu.au` / `farnarkle`: jobs submitted there run on the old cluster, which has no A100s.
 ```bash
 cd /fred/<project_id>/$USER
 git clone https://github.com/PapaYa2004/rag-wm-kg-extract.git
 cd rag-wm-kg-extract/knowledge_extraction
 cp slurm/config.env.example slurm/config.env
 module avail python                   # pick a >=3.10 module for PY_MODULE
-nano slurm/config.env                 # EDIT: PROJECT_ID, SLURM_ACCOUNT, CHROMA_DIR, RAGWM_OUTPUT, PY_MODULE
+nano slurm/config.env                 # EDIT: PROJECT_ID, SLURM_ACCOUNT, PY_MODULE
 export HF_TOKEN=hf_...                # accept the Llama-3.1 licence on huggingface.co first
 bash slurm/setup.sh                   # venvs, vLLM image, model weights, kg-gen API check
 ```
 The last line of the setup output must be `kg-gen API check OK`.
 
-**2. Build the watermarked dataset file**
+**2. Generate the watermarked KB with RAG-WM (local LLM), then build the dataset file**
 ```bash
-bash slurm/submit.sh datasets
-tail -f /fred/<project_id>/$USER/kg_extract_outputs/logs/kgx-datasets_*.out
+bash slurm/submit.sh ragwm
+squeue -u $USER
 ```
-The log should show `verification against Chroma: 3633 passages, 0 mismatches`. Then commit `datasets/nfcorpus/nfcorpus_watermarked.jsonl`, `MANIFEST.json` and `datasets/_ground_truth/` (or copy them back with `scp`).
+This runs the **unmodified** RAG-WM pipeline as a chain of resumable jobs:
+
+| step | what | time limit (auto-requeues) |
+|---|---|---|
+| `vectorstore` | contriever embeddings → Chroma | 1 h |
+| `entity` | RAG-WM LLM entity extraction (3,633 docs, sequential) | 8 h |
+| `doc` | watermark tuples (once; fresh secret key) + watermark texts, `--mutual_times 10` | 12 h |
+| `inject` | 50 tuples injected into the Chroma store | 1 h |
+| `verify` | RAG-WM's own detection check (30 tuples) | 2 h |
+| `datasets` | builds `datasets/nfcorpus/nfcorpus_watermarked.jsonl` + ground truth, verified against Chroma | 30 min |
+
+- **LLM:** Qwen2.5-7B-Instruct on vLLM, served as `gpt-3.5-turbo` (the name RAG-WM requests). It's deliberately a different model from the extractor (Llama-3.1-8B). Watermark texts therefore differ from the paper's GPT-3.5 ones.
+- **Launcher:** `ragwm_run/launch.py` redirects RAG-WM's one hard-coded path (`ChromadbPath`) to `$WORK/ragwm/chromadb_db` in memory. No RAG-WM file is edited.
+- **If a step fails,** fix the cause and resume from it: `bash slurm/submit.sh ragwm --from <step>`.
+- **Check:** the `datasets` log should show `verification against Chroma: 3633 passages, 0 mismatches`, and `ragwm-verify` writes RAG-WM's detection stats (`wmuint_stat.json`). Then commit `datasets/nfcorpus/nfcorpus_watermarked.jsonl`, `MANIFEST.json` and `datasets/_ground_truth/`.
 
 **3. Pilot (300 label-blind sampled passages, 1 A100)**
 ```bash

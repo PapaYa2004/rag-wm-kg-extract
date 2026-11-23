@@ -2,6 +2,7 @@
 # Submit the Knowledge Extraction pipeline as a chain of Slurm jobs.
 # Run from anywhere on an NT login node (tooarrana1/2):
 #
+#   slurm/submit.sh ragwm [--from STEP]                      # run RAG-WM (local LLM) then build the datasets
 #   slurm/submit.sh datasets                                 # build datasets/<ds>/<ds>_watermarked.jsonl from RAG-WM outputs
 #   slurm/submit.sh export                                   # (re)export the KB only
 #   slurm/submit.sh pilot                                    # export (if needed) -> 1 shard on PILOT_SAMPLE docs -> merge
@@ -50,6 +51,24 @@ chain() {  # $1 out_dir  $2 num_shards  $3 sample(or "")  $4 time  $5 max_parall
 
 cmd="${1:-}"; shift || true
 case "${cmd}" in
+  ragwm)
+    # RAG-WM chain: vectorstore -> entity -> doc -> inject -> verify -> datasets
+    # `submit.sh ragwm --from doc` restarts from a step (finished steps resume from checkpoints anyway).
+    from="vectorstore"; [[ "${1:-}" == "--from" ]] && from="$2"
+    steps=(vectorstore entity doc inject verify)
+    declare -A tlim=([vectorstore]=01:00:00 [entity]=08:00:00 [doc]=12:00:00 [inject]=01:00:00 [verify]=02:00:00)
+    started=0; dep=(); ids=""
+    for s in "${steps[@]}"; do
+      [[ "${s}" == "${from}" ]] && started=1
+      [[ ${started} -eq 0 ]] && continue
+      j=$(sb "${dep[@]}" --job-name="ragwm-${s}" --time="${tlim[$s]}" \
+            --output="${LOG_DIR}/%x_%j.out" --export=ALL,STEP="${s}" slurm/ragwm.sbatch)
+      dep=(--dependency=afterok:"${j}" --kill-on-invalid-dep=yes); ids="${ids} ${s}=${j}"
+    done
+    [[ ${started} -eq 0 ]] && { echo "unknown step ${from}" >&2; exit 2; }
+    j=$(sb "${dep[@]}" --output="${LOG_DIR}/%x_%j.out" slurm/build_datasets.sbatch)
+    echo "jobs:${ids} datasets=${j}"
+    echo "logs: ${LOG_DIR}/ragwm-<step>_<jobid>.out (+ vllm_<jobid>.log)" ;;
   datasets)
     j=$(sb --output="${LOG_DIR}/%x_%j.out" slurm/build_datasets.sbatch); echo "datasets job: ${j}" ;;
   export)
@@ -82,5 +101,5 @@ case "${cmd}" in
     j=$(sb --output="${LOG_DIR}/%x_%j.out" --export=ALL,OUT_DIR="${out}",EVAL_ARGS="${extra}" slurm/evaluate.sbatch)
     echo "eval job: ${j}" ;;
   *)
-    sed -n '2,14p' "$0"; exit 2 ;;
+    sed -n '2,15p' "$0"; exit 2 ;;
 esac

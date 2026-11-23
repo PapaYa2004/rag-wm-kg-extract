@@ -1,0 +1,19 @@
+# Env for running RAG-WM itself on OzSTAR (watermark generation + injection).
+# chromadb 0.5.20 is RAG-WM's version; it caps tokenizers<=0.20.3, hence transformers 4.45.x.
+torch
+transformers==4.45.2
+tokenizers<0.21
+sentence-transformers>=3,<4
+beir==2.0.0
+chromadb==0.5.20
+numpy<2
+openai>=1.40
+langchain-core>=0.3,<0.4
+langchain-openai>=0.2,<0.4
+langchain-experimental>=0.3,<0.4
+datasets
+json-repair
+tiktoken
+huggingface_hub
+regex
+tqdm

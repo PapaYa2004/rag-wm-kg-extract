@@ -10,7 +10,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 [[ -f slurm/config.env ]] || { echo "cp slurm/config.env.example slurm/config.env and edit it first" >&2; exit 2; }
 # shellcheck disable=SC1091
 source slurm/config.env
-export HF_HOME NLTK_DATA APPTAINER_CACHEDIR
+export HF_HOME NLTK_DATA APPTAINER_CACHEDIR TIKTOKEN_CACHE_DIR
 export APPTAINER_TMPDIR="${APPTAINER_CACHEDIR}/tmp"
 mkdir -p "${WORK}/venvs" "${WORK}/containers" "${HF_HOME}" "${NLTK_DATA}" "${APPTAINER_TMPDIR}" \
          "${OUT_ROOT}/kb" "${LOG_DIR}" "${DSPY_CACHEDIR}"
@@ -34,6 +34,17 @@ fi
 "${VENV_CLIENT}/bin/pip" install -q -r requirements-client.txt
 "${VENV_CLIENT}/bin/pip" freeze > "${OUT_ROOT}/requirements-client.lock.txt"
 
+echo "== 2b/5 RAG-WM venv (to generate the watermarked KB with a local LLM) =="
+if [[ ! -x "${VENV_RAGWM}/bin/python" ]]; then
+  python3 -m venv "${VENV_RAGWM}"
+fi
+"${VENV_RAGWM}/bin/pip" install -q --upgrade pip
+"${VENV_RAGWM}/bin/pip" install -q -r requirements-ragwm.txt
+"${VENV_RAGWM}/bin/pip" freeze > "${OUT_ROOT}/requirements-ragwm.lock.txt"
+mkdir -p "${TIKTOKEN_CACHE_DIR}"
+TIKTOKEN_CACHE_DIR="${TIKTOKEN_CACHE_DIR}" "${VENV_RAGWM}/bin/python" -c \
+  "import tiktoken; [tiktoken.get_encoding(e) for e in ('cl100k_base', 'o200k_base')]; print('tiktoken OK')"
+
 echo "== 3/5 vLLM container =="
 module load apptainer
 if [[ ! -s "${VLLM_SIF}" ]]; then
@@ -48,7 +59,9 @@ from huggingface_hub import snapshot_download
 tok = os.environ.get("HF_TOKEN")
 snapshot_download("${HF_MODEL}", token=tok,
                   allow_patterns=["*.json", "*.safetensors", "tokenizer*", "*.model", "*.txt"])
-for m in {"${KG_RETRIEVAL_MODEL}", "${KG_EVAL_EMBED_MODEL}", "${SEMHASH_MODEL}"}:
+snapshot_download("${RAGWM_HF_MODEL}",
+                  allow_patterns=["*.json", "*.safetensors", "tokenizer*", "*.model", "*.txt"])
+for m in {"${KG_RETRIEVAL_MODEL}", "${KG_EVAL_EMBED_MODEL}", "${SEMHASH_MODEL}", "facebook/contriever"}:
     snapshot_download(m)
 import nltk
 for r in ("punkt", "punkt_tab"):

@@ -9,7 +9,7 @@ fi
 # shellcheck disable=SC1091
 source "${SLURM_DIR}/config.env"
 
-export HF_HOME NLTK_DATA DSPY_CACHEDIR APPTAINER_CACHEDIR KG_MODEL KG_RETRIEVAL_MODEL KG_EVAL_EMBED_MODEL
+export HF_HOME NLTK_DATA DSPY_CACHEDIR APPTAINER_CACHEDIR TIKTOKEN_CACHE_DIR KG_MODEL KG_RETRIEVAL_MODEL KG_EVAL_EMBED_MODEL
 export PYTHONPATH="${KE_DIR}:${KGGEN_SRC}${PYTHONPATH:+:${PYTHONPATH}}"
 export PYTHONHASHSEED=0            # set iteration order -> reproducible SemHash / KMeans prompts
 export TOKENIZERS_PARALLELISM=false
@@ -39,7 +39,10 @@ kgx_free_port() {
 }
 
 # Start vLLM (OpenAI-compatible) on this node's GPU and wait until it serves the model.
+# Overridable: VLLM_MODEL (weights), VLLM_SERVED (space-separated names), VLLM_EXTRA (extra flags).
 kgx_start_vllm() {
+  local model="${VLLM_MODEL:-${HF_MODEL}}"
+  local served="${VLLM_SERVED:-${model}}"
   module load apptainer
   local port; port=$(kgx_free_port)
   local tag="${SLURM_JOB_ID:-local}${SLURM_ARRAY_TASK_ID:+_${SLURM_ARRAY_TASK_ID}}"
@@ -52,12 +55,13 @@ kgx_start_vllm() {
   # NB: Apptainer passes the host environment through, incl. HF_HOME / HF_HUB_OFFLINE.
   VLLM_CACHE_ROOT="${scratch}/vllm_cache" XDG_CACHE_HOME="${scratch}/xdg" \
   apptainer exec --nv -B /fred "${VLLM_SIF}" \
-    vllm serve "${HF_MODEL}" \
+    vllm serve "${model}" \
       --host 127.0.0.1 --port "${port}" \
-      --served-model-name "${HF_MODEL}" \
+      --served-model-name ${served} \
       --dtype bfloat16 --seed 0 \
       --max-model-len "${VLLM_MAX_MODEL_LEN}" \
       --gpu-memory-utilization "${VLLM_GPU_UTIL}" \
+      ${VLLM_EXTRA:-} \
       > "${VLLM_LOG}" 2>&1 &
   VLLM_PID=$!
   trap kgx_stop_vllm EXIT

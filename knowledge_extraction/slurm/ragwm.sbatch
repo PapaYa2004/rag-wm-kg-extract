@@ -15,7 +15,7 @@
 source "${SLURM_SUBMIT_DIR}/slurm/common.sh"
 kgx_offline
 kgx_gpu_info
-module load "${PY_MODULE}"
+kgx_load_python
 # shellcheck disable=SC1091
 source "${VENV_RAGWM}/bin/activate"
 export RAGWM_DIR RAGWM_DATASETS_DIR

@@ -15,7 +15,8 @@ export APPTAINER_TMPDIR="${APPTAINER_CACHEDIR}/tmp"
 mkdir -p "${WORK}/venvs" "${WORK}/containers" "${HF_HOME}" "${NLTK_DATA}" "${APPTAINER_TMPDIR}" \
          "${OUT_ROOT}/kb" "${LOG_DIR}" "${DSPY_CACHEDIR}"
 
-module load "${PY_MODULE}"
+module load ${PY_MODULE}   # may list several modules
+unset PYTHONPATH            # toolchain numpy/scipy must not satisfy pip installs into the venvs
 python3 -c 'import sys; assert sys.version_info >= (3, 10), sys.version' \
   || { echo "PY_MODULE must provide Python >= 3.10" >&2; exit 2; }
 

@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # shellcheck disable=SC1091
 source slurm/config.env
-module load "${PY_MODULE}"
+module load ${PY_MODULE}
 # shellcheck disable=SC1091
 source "${VENV_CLIENT}/bin/activate"
 export PYTHONPATH="${KE_DIR}:${KGGEN_SRC}"

@@ -10,7 +10,7 @@ fi
 source "${SLURM_DIR}/config.env"
 
 export HF_HOME NLTK_DATA DSPY_CACHEDIR APPTAINER_CACHEDIR TIKTOKEN_CACHE_DIR KG_MODEL KG_RETRIEVAL_MODEL KG_EVAL_EMBED_MODEL
-export PYTHONPATH="${KE_DIR}:${KGGEN_SRC}${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${KE_DIR}:${KGGEN_SRC}"   # only ours: module toolchains add their own numpy/scipy
 export PYTHONHASHSEED=0            # set iteration order -> reproducible SemHash / KMeans prompts
 export TOKENIZERS_PARALLELISM=false
 mkdir -p "${LOG_DIR}" "${DSPY_CACHEDIR}"
@@ -19,8 +19,16 @@ kgx_offline() {                    # compute nodes: use only pre-downloaded mode
   export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 }
 
+# Load the Python module(s) (PY_MODULE may list several), then drop whatever the module put on
+# PYTHONPATH (python-scientific toolchains add numpy/scipy) so only our venv packages are used.
+kgx_load_python() {
+  # shellcheck disable=SC2086
+  module load ${PY_MODULE}
+  export PYTHONPATH="${KE_DIR}:${KGGEN_SRC}"
+}
+
 kgx_client_env() {
-  module load "${PY_MODULE}"
+  kgx_load_python
   # shellcheck disable=SC1091
   source "${VENV_CLIENT}/bin/activate"
 }

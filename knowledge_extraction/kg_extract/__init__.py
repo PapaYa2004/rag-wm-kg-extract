@@ -5,4 +5,4 @@ Keep this module import-light (stdlib only): `export_kb` runs in a minimal
 environment that has chromadb==0.5.20 but not kg-gen.
 """
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"

@@ -10,7 +10,7 @@
 #   KB_SOURCE=chroma -> from a COPY of the Chroma store in $JOBFS (original never opened/migrated)
 
 source "${SLURM_SUBMIT_DIR}/slurm/common.sh"
-module load "${PY_MODULE}"
+kgx_load_python
 source "${VENV_EXPORT}/bin/activate"
 mkdir -p "$(dirname "${KB_JSONL}")"
 

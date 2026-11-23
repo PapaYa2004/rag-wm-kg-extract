@@ -10,7 +10,7 @@
 # This job reads ground truth on purpose: it is a data-preparation (defender) step, not extraction.
 
 source "${SLURM_SUBMIT_DIR}/slurm/common.sh"
-module load "${PY_MODULE}"
+kgx_load_python
 INJECT_JSON="${RAGWM_OUTPUT}/wm_generate/${DATASET}/${MUTUAL_TIMES}/wmuint_inject.json"
 ORIG="${DATASETS_DIR}/${DATASET}/${DATASET}_original.jsonl"
 

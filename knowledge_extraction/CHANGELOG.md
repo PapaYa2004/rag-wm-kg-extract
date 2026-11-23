@@ -3,6 +3,11 @@
 Semantic versioning; the version lives in `kg_extract/__init__.py` and is written
 into every output record, run file, `stats.json` and evaluation report.
 
+## 0.3.4 (2026-11-23)
+- NT hierarchical modules: default `PY_MODULE=python-scientific/3.11.5-foss-2023b` (may list
+  several modules); PYTHONPATH is reset after `module load` so toolchain numpy/scipy can't
+  shadow the venvs' pinned packages (setup, all jobs).
+
 ## 0.3.3 (2026-11-23)
 - Output dirs are per extractor model (`<dataset>[_pilot]_<MODEL_TAG>`), so 3.1-8B and
   3.2-3B pilots can be compared side by side; extract refuses to resume into a dir

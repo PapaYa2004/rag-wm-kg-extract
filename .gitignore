@@ -1,0 +1,26 @@
+# secrets: RAG-WM LLM configs contain API keys / HF tokens
+rag-wm/model_configs/
+rag-wm/src/models/model_test.ipynb
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv*/
+*.egg-info/
+
+# large data / artefacts
+datasets/hotpotqa/
+datasets/msmarco/
+datasets/nq/
+datasets/trec-covid/
+*.sif
+*.zip
+chromadb_db/
+outputs/
+knowledge_extraction/outputs/
+slurm-*.out
+logs/
+
+# local config with paths / account names
+knowledge_extraction/slurm/config.env

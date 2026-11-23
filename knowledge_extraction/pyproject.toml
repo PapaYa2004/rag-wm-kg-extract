@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-wm-kg-extract"
+description = "Knowledge Extraction stage (KGGen) for RAG-WM-watermarked knowledge bases"
+dynamic = ["version"]
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["kg_extract", "kg_eval"]
+
+[tool.setuptools.dynamic]
+version = { attr = "kg_extract.__version__" }   # single source of truth; bump on every change (semver)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

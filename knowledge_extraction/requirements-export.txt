@@ -1,0 +1,4 @@
+# Minimal env for kg_extract.export_kb: must match the chromadb version RAG-WM used
+# to write the store (rag-wm/README.md: 0.5.20). Newer versions may migrate the sqlite file.
+chromadb==0.5.20
+numpy<2

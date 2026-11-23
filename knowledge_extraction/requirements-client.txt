@@ -1,0 +1,19 @@
+# Client env for extraction / merge / evaluation (no vLLM here; vLLM runs in Apptainer).
+# kg-gen itself is NOT pip-installed: we use the vendored checkout at ../kg-gen/src via PYTHONPATH.
+# These are its runtime imports (checked with `python -m kg_extract.check_kggen`).
+dspy>=3.0
+litellm
+pydantic>=2
+numpy
+scipy
+scikit-learn
+networkx
+nltk
+inflect
+rank-bm25
+semhash>=0.3,<0.4      # kg-gen's DeduplicateList reads DeduplicationResult.duplicates, removed in semhash 0.4
+neo4j
+typing_extensions
+sentence-transformers>=5.1.0
+torch
+huggingface_hub

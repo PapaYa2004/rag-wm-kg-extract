@@ -3,6 +3,11 @@
 Semantic versioning; the version lives in `kg_extract/__init__.py` and is written
 into every output record, run file, `stats.json` and evaluation report.
 
+## 0.3.3 (2026-11-23)
+- Output dirs are per extractor model (`<dataset>[_pilot]_<MODEL_TAG>`), so 3.1-8B and
+  3.2-3B pilots can be compared side by side; extract refuses to resume into a dir
+  written by a different model.
+
 ## 0.3.2 (2026-11-23)
 - setup.sh: a gated/unavailable extractor model no longer aborts setup (RAG-WM's Qwen is
   downloaded first); re-run setup once access is granted.

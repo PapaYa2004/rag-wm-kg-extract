@@ -68,7 +68,9 @@ def select_docs(docs: list[dict], sample: int | None, seed: int) -> list[dict]:
     return [d for d in docs if d["doc_id"] in chosen]
 
 
-def read_done(shard_dir: str, retry_failed: bool) -> set[str]:
+def read_done(shard_dir: str, retry_failed: bool, model: str | None = None) -> set[str]:
+    """doc_ids with a final record. Refuses to resume into a dir written by another model,
+    which would silently mix two extractors in one graph."""
     done = set()
     for p in glob.glob(os.path.join(shard_dir, "part-*.jsonl")):
         with open(p, encoding="utf-8") as f:
@@ -77,6 +79,9 @@ def read_done(shard_dir: str, retry_failed: bool) -> set[str]:
                     r = json.loads(line)
                 except json.JSONDecodeError:
                     continue  # truncated last line from a killed job
+                if model and r.get("model") and r["model"] != model:
+                    raise SystemExit(f"{shard_dir} holds records from model {r['model']!r}, not {model!r}: "
+                                     f"use a separate --out-dir per model")
                 st = r.get("status")
                 if st == STATUS_OK or (st in FINAL_STATUSES and not retry_failed):
                     done.add(r["doc_id"])
@@ -220,7 +225,7 @@ def main(argv=None):
 
     docs = select_docs(load_kb(args.kb), args.sample, args.sample_seed)
     mine = docs[args.shard_index::args.num_shards]
-    done = read_done(shard_dir, args.retry_failed)
+    done = read_done(shard_dir, args.retry_failed, args.model)
     todo = [d for d in mine if d["doc_id"] not in done]
     if args.max_docs:
         todo = todo[: args.max_docs]

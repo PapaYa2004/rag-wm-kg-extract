@@ -74,7 +74,7 @@ case "${cmd}" in
   export)
     j=$(submit_export_if_needed force); echo "export job: ${j}" ;;
   pilot)
-    chain "${OUT_ROOT}/${DATASET}_pilot" 1 "${PILOT_SAMPLE}" "01:00:00" "" ;;
+    chain "${OUT_ROOT}/${DATASET}_pilot_${MODEL_TAG}" 1 "${PILOT_SAMPLE}" "01:00:00" "" ;;
   full)
     shards=""; time="02:00:00"; maxpar=""
     while [[ $# -gt 0 ]]; do
@@ -86,7 +86,7 @@ case "${cmd}" in
       esac
     done
     [[ -z "${shards}" ]] && { echo "--shards N is required (see the pilot estimate)" >&2; exit 2; }
-    chain "${OUT_ROOT}/${DATASET}" "${shards}" "" "${time}" "${maxpar}" ;;
+    chain "${OUT_ROOT}/${DATASET}_${MODEL_TAG}" "${shards}" "" "${time}" "${maxpar}" ;;
   merge)
     out="$1"; shift; time="04:00:00"; extra=""
     while [[ $# -gt 0 ]]; do

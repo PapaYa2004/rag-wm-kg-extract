@@ -11,7 +11,7 @@ module load "${PY_MODULE}"
 # shellcheck disable=SC1091
 source "${VENV_CLIENT}/bin/activate"
 export PYTHONPATH="${KE_DIR}:${KGGEN_SRC}"
-OUT="${1:-${OUT_ROOT}/${DATASET}_pilot}"
+OUT="${1:-${OUT_ROOT}/${DATASET}_pilot_${MODEL_TAG}}"
 N_FULL=$(wc -l < "${KB_JSONL}")
 python -m kg_extract.report samples --out-dir "${OUT}" --n 20
 echo
